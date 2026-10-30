@@ -1,7 +1,7 @@
 import pyvisa
 
 from time import sleep
-from instr.psu.dp832a import DP832A
+from egse.psu.dp832a import DP832A
 
 # DP832A_IP = "192.168.57.73" # Rigol DP832 #01 / ABS00086
 DP832A_IP = "192.168.23.9" # ABS00003

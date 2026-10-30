@@ -1,3 +1,4 @@
+from egse.dmm.k34460a import K34460A
 import typer
 import pyvisa
 import time
@@ -9,7 +10,7 @@ from rich.text import Text
 from typing_extensions import Annotated
 from enum import Enum
 
-from instr.psu.dp832a import DP832A
+from egse.psu.dp832a import DP832A
 
 DP832A_IP = "192.168.57.73" # Rigol DP832 #01
 
@@ -29,15 +30,19 @@ class MeasureType(str, Enum):
     ovp = "ovp"
     ocp = "ocp"
 
+class K34460AMeasureType(str, Enum):
+    vdc = "vdc"
+
 
 app = typer.Typer()
 dp832a_app = typer.Typer()
 app.add_typer(dp832a_app, name="dp832a")
 channel_app = typer.Typer()
 dp832a_app.add_typer(channel_app, name="ch")
+k34460a_app = typer.Typer()
+app.add_typer(k34460a_app, name="k34460a")
 
-
-## ROOT COMMANDS (instr ...)
+## ROOT COMMANDS (egse ...)
 @app.callback()
 def main():
     """
@@ -58,7 +63,7 @@ def ls():
 
 
 
-### DP832A COMMANDS (instr dp832a ...)
+### DP832A COMMANDS (egse dp832a ...)
 @dp832a_app.callback()
 def main(
     ip: Annotated[str, typer.Argument(help="IP address of the DP832A")],
@@ -104,7 +109,7 @@ def query(
     print(f'{dp.query(command)}')
 
 
-### DP832A CHANNEL COMMANDS (instr dp832a ch ...)
+### DP832A CHANNEL COMMANDS (egse dp832a ch ...)
 @channel_app.callback()
 def channel_callback(
     channel: Annotated[int, typer.Argument(min=1, max=3, help="Channel to modify (1, 2, or 3)")],
@@ -181,6 +186,42 @@ def mode():
         print(f'CH{ch} mode: {mode}')
 
 
+## 34460A COMMANDS (egse k34460a ...)
+@k34460a_app.callback()
+def main():
+    """
+    Keysight 34460A DMM subcommands
+    """
+    global k3
+    k3 = K34460A(rm)
+
+
+@k34460a_app.command()
+def about():
+    """
+    Show information about the connected DMM
+    """
+    res = dp.about()
+    print(f'[bold]Connected to {res["manufacturer"]} {res["model"]} [/bold]\nS/N: {res["serial"]} \nFW Version: {res["firmware"]} \nIP: {k3}')
+
+@k34460a_app.command()
+def measure(
+    type: Annotated[K34460AMeasureType, typer.Argument(help="Function to measure")],
+    range: Annotated[str, typer.Argument(help="Range to measure (auto, 0.1, 1, 10, 100, or 1000)")],
+):
+    """
+    Measure the DC voltage on the DMM.
+    """
+    try:
+        value = k3.get_measure(type.value, range)
+    except Exception as e:
+        print(f"Error measuring {type.value}: {e}")
+    else:
+        unit='mV'
+        print(f'Measured {type.value}: {value} {unit}')
+
+
+## MISC RANDOM STUFF
 def make_table(status):
 
     def format_cell(value, *, unit=None):
